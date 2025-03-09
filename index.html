@@ -17,7 +17,13 @@
           align-items: center;
         "
       >
-        <p></p>
+        <div>
+          <label for="gameModeSelector">Game Mode</label>
+          <select name="gameModeSelector" id="gameModeSelector">
+            <option value="LOGICAL_AI">Logical AI</option>
+            <option value="ACTUAL_AI">Actual AI</option>
+          </select>
+        </div>
         <div
           style="
             display: flex;
@@ -54,16 +60,26 @@
         height="700"
       ></canvas>
     </div>
+
     <script>
-      let rounds = 0;
+      let rounds = 1;
       const W = 1200;
       const H = 700;
+      const $ = (selector) => document.querySelector(selector);
 
-      const canvas = document.getElementById("canvas");
+      let gameMode = "LOGICAL_AI";
+
+      const canvas = $("#canvas");
       const ctx = canvas.getContext("2d");
 
-      const player1Score = document.getElementById("player1Score");
-      const player2Score = document.getElementById("player2Score");
+      const player1Score = $("#player1Score");
+      const player2Score = $("#player2Score");
+
+      const gameModeSelector = $("#gameModeSelector");
+
+      gameModeSelector.onchange = function () {
+        gameMode = this.value;
+      };
 
       const multiplier = () => (Math.random() > 0.5 ? -1 : 1);
 
@@ -106,11 +122,37 @@
         if (e.key in keys) keys[e.key] = false;
       });
 
+      let gameRunning = false;
+
       draw();
 
-      document.getElementById("startButton").onclick = function () {
-        this.style.display = "none";
-        update();
+      $("#startButton").onclick = function () {
+        if (gameMode === "ACTUAL_AI") {
+        } else {
+          this.style.display = "none";
+          $("#roundsCount").textContent = rounds;
+
+          // If the ball has zero velocity (paused state), restart it with random velocity
+          if (ball.dx === 0 && ball.dy === 0) {
+            ball = {
+              ...initialState.ball,
+              dx: multiplier() * 8,
+              dy: randomNumber(1, 2),
+            };
+
+            // Increment rounds counter if continuing after a 5-round pause
+            if (rounds % 5 === 0) {
+              rounds += 1;
+              $("#roundsCount").textContent = rounds;
+            }
+          }
+
+          if (!gameRunning) {
+            gameRunning = true;
+            update();
+          }
+        }
+        $("#gameModeSelector").disabled = "disabled";
       };
 
       function draw() {
@@ -147,15 +189,17 @@
       }
 
       function newRound() {
-        const roundsCount = document.getElementById("roundsCount");
-        const startButton = document.getElementById("startButton");
+        const roundsCount = $("#roundsCount");
+        const startButton = $("#startButton");
+        const gameModeSelector = $("#gameModeSelector");
 
         leftPaddle = { ...initialState.leftPaddle };
         rightPaddle = { ...initialState.rightPaddle };
 
         if (rounds % 5 === 0 && rounds !== 0) {
           startButton.style.display = "block";
-          startButton.textContent = "click to continue";
+          gameModeSelector.disabled = false;
+          startButton.textContent = "Click to continue";
           ball = {
             ...initialState.ball,
             dx: 0,
@@ -164,13 +208,17 @@
         } else {
           ball = {
             ...initialState.ball,
+            dx: multiplier() * 8,
+            dy: randomNumber(1, 2),
           };
           rounds += 1;
           roundsCount.textContent = rounds;
         }
       }
 
-      function update() {
+      function playerAIMode() {
+        gameRunning = true;
+
         ball.x += ball.dx;
         ball.y += ball.dy;
 
@@ -202,7 +250,6 @@
 
         // if in right side of court (half of that)
         if (ball.dx > 0 && ball.x > W / 4) {
-          console.log("approaching AI");
           // if the ball is at a higher position than the paddle
           if (
             ball.y > rightPaddle.y + paddleHeight / 2 &&
@@ -218,7 +265,22 @@
         }
 
         draw();
-        requestAnimationFrame(update);
+
+        if (ball.dx !== 0 || ball.dy !== 0) {
+          requestAnimationFrame(update);
+        } else {
+          gameRunning = false;
+        }
+      }
+
+      function generationalAIMode() {}
+
+      function update() {
+        if (gameMode === "LOGICAL_AI") {
+          playerAIMode();
+        } else {
+          generationalAIMode();
+        }
       }
     </script>
   </body>
