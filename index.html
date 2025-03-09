@@ -3,20 +3,88 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Game</title>
-  </head>
-  <body>
-    <div style="display: grid; justify-content: center">
-      <h1 style="color: #333; text-align: center">Pong</h1>
+    <title>Pong Neuroevolution</title>
 
-      <div
-        style="
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          grid-template-rows: 1fr;
-          align-items: center;
-        "
-      >
+    <meta
+      name="description"
+      content="Pong with Neuroevolution. You know, like the flappy one."
+    />
+    <meta property="og:title" content="Ultimate Pong Game" />
+    <meta
+      property="og:description"
+      content="Pong with Neuroevolution. You know, like the flappy one."
+    />
+    <meta property="og:image" content="favicons/android-chrome-512x512.png" />
+    <meta property="og:url" content="https://pong-neuroevolution.vercel.app" />
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="favicons/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="favicons/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="favicons/favicon-16x16.png"
+    />
+    <link rel="manifest" href="favicons/site.webmanifest" />
+    <link rel="shortcut icon" href="favicons/favicon.ico" />
+
+    <style>
+      .game-container {
+        display: grid;
+        justify-content: center;
+      }
+
+      .game-header {
+        color: #333;
+        text-align: center;
+      }
+
+      .game-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr;
+        align-items: center;
+      }
+
+      .score-display {
+        display: flex;
+        column-gap: 1rem;
+        font-size: large;
+        justify-content: center;
+      }
+
+      .rounds-display {
+        justify-self: end;
+      }
+
+      .start-button {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .game-canvas {
+        border: 1px solid #333;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="game-container">
+      <h1 class="game-header">Pong</h1>
+
+      <div class="game-controls">
         <div>
           <label for="gameModeSelector">Game Mode</label>
           <select name="gameModeSelector" id="gameModeSelector">
@@ -24,37 +92,20 @@
             <option value="ACTUAL_AI">Actual AI</option>
           </select>
         </div>
-        <div
-          style="
-            display: flex;
-            column-gap: 1rem;
-            font-size: large;
-            justify-content: center;
-          "
-        >
+        <div class="score-display">
           <p id="player1Score">0</p>
           <p>:</p>
           <p id="player2Score">0</p>
         </div>
 
-        <div style="justify-self: end">
+        <div class="rounds-display">
           Rounds: <span id="roundsCount">0</span>
         </div>
       </div>
 
-      <button
-        id="startButton"
-        style="
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-        "
-      >
-        Press Play to Start
-      </button>
+      <button id="startButton" class="start-button">Press Play to Start</button>
       <canvas
-        style="border: 1px solid #333; border-radius: 5px"
+        class="game-canvas"
         id="canvas"
         width="1200"
         height="700"
@@ -62,144 +113,94 @@
     </div>
 
     <script>
-      let rounds = 1;
-      const W = 1200;
-      const H = 700;
-      const $ = (selector) => document.querySelector(selector);
+      // Constants
+      const CANVAS_WIDTH = 1200;
+      const CANVAS_HEIGHT = 700;
+      const PADDLE_WIDTH = 20;
+      const PADDLE_HEIGHT = 100;
+      const PADDLE_SPEED = 5;
+      const BALL_RADIUS = 10;
+      const BALL_INITIAL_SPEED_X = 8;
+      const BALL_MIN_SPEED_Y = 1;
+      const BALL_MAX_SPEED_Y = 2;
 
-      let gameMode = "LOGICAL_AI";
-
-      const canvas = $("#canvas");
-      const ctx = canvas.getContext("2d");
-
-      const player1Score = $("#player1Score");
-      const player2Score = $("#player2Score");
-
-      const gameModeSelector = $("#gameModeSelector");
-
-      gameModeSelector.onchange = function () {
-        gameMode = this.value;
+      // DOM Elements
+      const dom = {
+        canvas: document.getElementById("canvas"),
+        player1Score: document.getElementById("player1Score"),
+        player2Score: document.getElementById("player2Score"),
+        gameModeSelector: document.getElementById("gameModeSelector"),
+        startButton: document.getElementById("startButton"),
+        roundsCount: document.getElementById("roundsCount"),
       };
 
-      const multiplier = () => (Math.random() > 0.5 ? -1 : 1);
+      // Game state
+      const state = {
+        gameMode: "LOGICAL_AI",
+        gameRunning: false,
+        rounds: 1,
+        keys: {
+          w: false,
+          s: false,
+          ArrowUp: false,
+          ArrowDown: false,
+        },
+      };
 
-      function randomNumber(min, max) {
-        return multiplier() * (Math.random() * (max - min) + min);
-      }
-
-      const paddleWidth = 20;
-      const paddleHeight = 100;
-      const paddleSpeed = 5;
-
+      // Initial object positions
       const initialState = {
         ball: {
-          x: W / 2,
-          y: H / 2,
-          radius: 10,
-          dx: multiplier() * 8,
-          dy: randomNumber(1, 2),
+          x: CANVAS_WIDTH / 2,
+          y: CANVAS_HEIGHT / 2,
+          radius: BALL_RADIUS,
+          dx: getRandomMultiplier() * BALL_INITIAL_SPEED_X,
+          dy: getRandomNumber(BALL_MIN_SPEED_Y, BALL_MAX_SPEED_Y),
         },
-        leftPaddle: { x: 20, y: H / 2 - paddleHeight / 2 },
-        rightPaddle: { x: W - 40, y: H / 2 - paddleHeight / 2 },
+        leftPaddle: {
+          x: 20,
+          y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+        },
+        rightPaddle: {
+          x: CANVAS_WIDTH - 40,
+          y: CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2,
+        },
       };
-      let ball = { ...initialState.ball };
 
+      // Game objects
+      let ball = { ...initialState.ball };
       let leftPaddle = { ...initialState.leftPaddle };
       let rightPaddle = { ...initialState.rightPaddle };
 
-      const keys = {
-        w: false,
-        s: false,
-        ArrowUp: false,
-        ArrowDown: false,
-      };
+      // Canvas context
+      const ctx = dom.canvas.getContext("2d");
 
-      document.addEventListener("keydown", (e) => {
-        if (e.key in keys) keys[e.key] = true;
-      });
-
-      document.addEventListener("keyup", (e) => {
-        if (e.key in keys) keys[e.key] = false;
-      });
-
-      let gameRunning = false;
-
-      draw();
-
-      $("#startButton").onclick = function () {
-        if (gameMode === "ACTUAL_AI") {
-        } else {
-          this.style.display = "none";
-          $("#roundsCount").textContent = rounds;
-
-          // If the ball has zero velocity (paused state), restart it with random velocity
-          if (ball.dx === 0 && ball.dy === 0) {
-            ball = {
-              ...initialState.ball,
-              dx: multiplier() * 8,
-              dy: randomNumber(1, 2),
-            };
-
-            // Increment rounds counter if continuing after a 5-round pause
-            if (rounds % 5 === 0) {
-              rounds += 1;
-              $("#roundsCount").textContent = rounds;
-            }
-          }
-
-          if (!gameRunning) {
-            gameRunning = true;
-            update();
-          }
-        }
-        $("#gameModeSelector").disabled = "disabled";
-      };
-
-      function draw() {
-        ctx.clearRect(0, 0, W, H);
-
-        ctx.setLineDash([10, 5]);
-        ctx.beginPath();
-        ctx.moveTo(W / 2, 0);
-        ctx.lineTo(W / 2, H);
-        ctx.strokeStyle = "#999";
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = "gray";
-        ctx.fillRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight);
-
-        ctx.fillStyle = "darkgray";
-        ctx.fillRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight);
-
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "tomato";
-        ctx.fill();
-        ctx.closePath();
+      // Utility functions
+      function getRandomMultiplier() {
+        return Math.random() > 0.5 ? -1 : 1;
       }
 
+      function getRandomNumber(min, max) {
+        return getRandomMultiplier() * (Math.random() * (max - min) + min);
+      }
+
+      // Game logic functions
       function checkCollision(paddle) {
         return (
-          ball.x - ball.radius <= paddle.x + paddleWidth &&
+          ball.x - ball.radius <= paddle.x + PADDLE_WIDTH &&
           ball.x + ball.radius >= paddle.x &&
           ball.y >= paddle.y &&
-          ball.y <= paddle.y + paddleHeight
+          ball.y <= paddle.y + PADDLE_HEIGHT
         );
       }
 
       function newRound() {
-        const roundsCount = $("#roundsCount");
-        const startButton = $("#startButton");
-        const gameModeSelector = $("#gameModeSelector");
-
         leftPaddle = { ...initialState.leftPaddle };
         rightPaddle = { ...initialState.rightPaddle };
 
-        if (rounds % 5 === 0 && rounds !== 0) {
-          startButton.style.display = "block";
-          gameModeSelector.disabled = false;
-          startButton.textContent = "Click to continue";
+        if (state.rounds % 5 === 0 && state.rounds !== 0) {
+          dom.startButton.style.display = "block";
+          dom.gameModeSelector.disabled = false;
+          dom.startButton.textContent = "Click to continue";
           ball = {
             ...initialState.ball,
             dx: 0,
@@ -208,80 +209,171 @@
         } else {
           ball = {
             ...initialState.ball,
-            dx: multiplier() * 8,
-            dy: randomNumber(1, 2),
+            dx: getRandomMultiplier() * BALL_INITIAL_SPEED_X,
+            dy: getRandomNumber(BALL_MIN_SPEED_Y, BALL_MAX_SPEED_Y),
           };
-          rounds += 1;
-          roundsCount.textContent = rounds;
+          state.rounds += 1;
+          dom.roundsCount.textContent = state.rounds;
         }
       }
 
-      function playerAIMode() {
-        gameRunning = true;
+      // Rendering
+      function draw() {
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+        // Draw center line
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.moveTo(CANVAS_WIDTH / 2, 0);
+        ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
+        ctx.strokeStyle = "#999";
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw paddles
+        ctx.fillStyle = "gray";
+        ctx.fillRect(leftPaddle.x, leftPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+
+        ctx.fillStyle = "darkgray";
+        ctx.fillRect(rightPaddle.x, rightPaddle.y, PADDLE_WIDTH, PADDLE_HEIGHT);
+
+        // Draw ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "tomato";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      // Game modes
+      function runLogicalAIMode() {
+        state.gameRunning = true;
+
+        // Update ball position
         ball.x += ball.dx;
         ball.y += ball.dy;
 
+        // Handle collisions
         if (checkCollision(leftPaddle) || checkCollision(rightPaddle)) {
           ball.dx *= -1;
         }
 
-        if (ball.x > W - (paddleWidth + 20) && !checkCollision(rightPaddle)) {
-          player1Score.textContent = Number(player1Score.textContent) + 1;
+        // Handle scoring
+        if (
+          ball.x > CANVAS_WIDTH - (PADDLE_WIDTH + 20) &&
+          !checkCollision(rightPaddle)
+        ) {
+          dom.player1Score.textContent =
+            Number(dom.player1Score.textContent) + 1;
           newRound();
         }
 
-        if (ball.x < paddleWidth + 20 && !checkCollision(leftPaddle)) {
-          player2Score.textContent = Number(player2Score.textContent) + 1;
+        if (ball.x < PADDLE_WIDTH + 20 && !checkCollision(leftPaddle)) {
+          dom.player2Score.textContent =
+            Number(dom.player2Score.textContent) + 1;
           newRound();
         }
 
-        if (ball.y > H - 5 || ball.y < 5) {
+        // Handle wall bounces
+        if (ball.y > CANVAS_HEIGHT - 5 || ball.y < 5) {
           ball.dy *= -1;
         }
 
-        if ((keys.ArrowUp || keys.w) && leftPaddle.y > 0) {
-          leftPaddle.y -= paddleSpeed;
+        // Handle player paddle movement
+        if ((state.keys.ArrowUp || state.keys.w) && leftPaddle.y > 0) {
+          leftPaddle.y -= PADDLE_SPEED;
         }
 
-        if ((keys.ArrowDown || keys.s) && leftPaddle.y < H - paddleHeight) {
-          leftPaddle.y += paddleSpeed;
+        if (
+          (state.keys.ArrowDown || state.keys.s) &&
+          leftPaddle.y < CANVAS_HEIGHT - PADDLE_HEIGHT
+        ) {
+          leftPaddle.y += PADDLE_SPEED;
         }
 
-        // if in right side of court (half of that)
-        if (ball.dx > 0 && ball.x > W / 4) {
-          // if the ball is at a higher position than the paddle
+        // Handle AI paddle movement
+        if (ball.dx > 0 && ball.x > CANVAS_WIDTH / 4) {
           if (
-            ball.y > rightPaddle.y + paddleHeight / 2 &&
-            rightPaddle.y < H - paddleHeight
+            ball.y > rightPaddle.y + PADDLE_HEIGHT / 2 &&
+            rightPaddle.y < CANVAS_HEIGHT - PADDLE_HEIGHT
           ) {
-            rightPaddle.y += paddleSpeed;
+            rightPaddle.y += PADDLE_SPEED;
           }
 
-          // if the ball is at a lower position than the paddle
-          if (ball.y < rightPaddle.y + paddleHeight / 2 && rightPaddle.y > 0) {
-            rightPaddle.y -= paddleSpeed;
+          if (ball.y < rightPaddle.y + PADDLE_HEIGHT / 2 && rightPaddle.y > 0) {
+            rightPaddle.y -= PADDLE_SPEED;
           }
         }
 
+        // Render the game
         draw();
 
+        // Continue game loop if ball is moving
         if (ball.dx !== 0 || ball.dy !== 0) {
           requestAnimationFrame(update);
         } else {
-          gameRunning = false;
+          state.gameRunning = false;
         }
       }
 
-      function generationalAIMode() {}
+      function runActualAIMode() {
+        // Future implementation
+      }
 
+      // Main game loop
       function update() {
-        if (gameMode === "LOGICAL_AI") {
-          playerAIMode();
+        if (state.gameMode === "LOGICAL_AI") {
+          runLogicalAIMode();
         } else {
-          generationalAIMode();
+          runActualAIMode();
         }
       }
+
+      // Event listeners
+      dom.gameModeSelector.onchange = function () {
+        state.gameMode = this.value;
+      };
+
+      dom.startButton.onclick = function () {
+        if (state.gameMode === "ACTUAL_AI") {
+          // Future implementation
+        } else {
+          this.style.display = "none";
+          dom.roundsCount.textContent = state.rounds;
+
+          // Restart ball if paused
+          if (ball.dx === 0 && ball.dy === 0) {
+            ball = {
+              ...initialState.ball,
+              dx: getRandomMultiplier() * BALL_INITIAL_SPEED_X,
+              dy: getRandomNumber(BALL_MIN_SPEED_Y, BALL_MAX_SPEED_Y),
+            };
+
+            // Increment rounds if continuing after a 5-round pause
+            if (state.rounds % 5 === 0) {
+              state.rounds += 1;
+              dom.roundsCount.textContent = state.rounds;
+            }
+          }
+
+          if (!state.gameRunning) {
+            state.gameRunning = true;
+            update();
+          }
+        }
+        dom.gameModeSelector.disabled = "disabled";
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key in state.keys) state.keys[e.key] = true;
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.key in state.keys) state.keys[e.key] = false;
+      });
+
+      // Initial rendering
+      draw();
     </script>
   </body>
 </html>
