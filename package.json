@@ -1,0 +1,22 @@
+{
+  "name": "pong-neuroevolution",
+  "version": "1.0.0",
+  "description": "Pong with Neuroevolution learning (still has normal, regular AI mode tho, lol).",
+  "main": "Neuroevolution.js",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 4899",
+    "test": "node neurotest.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vicradon/pong-neuroevolution.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vicradon/pong-neuroevolution/issues"
+  },
+  "homepage": "https://github.com/vicradon/pong-neuroevolution#readme"
+}
