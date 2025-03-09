@@ -185,12 +185,30 @@
 
       // Game logic functions
       function checkCollision(paddle) {
-        return (
+        if (
           ball.x - ball.radius <= paddle.x + PADDLE_WIDTH &&
           ball.x + ball.radius >= paddle.x &&
           ball.y >= paddle.y &&
           ball.y <= paddle.y + PADDLE_HEIGHT
-        );
+        ) {
+          // Increase speed slightly
+          const speedIncreaseFactor = 1.05;
+          ball.dx =
+            Math.sign(ball.dx) *
+            Math.min(
+              Math.abs(ball.dx) * speedIncreaseFactor,
+              BALL_INITIAL_SPEED_X * 2
+            );
+          ball.dy =
+            Math.sign(ball.dy) *
+            Math.min(
+              Math.abs(ball.dy) * speedIncreaseFactor,
+              BALL_MAX_SPEED_Y * 2
+            );
+
+          return true;
+        }
+        return false;
       }
 
       function newRound() {
@@ -292,7 +310,7 @@
         }
 
         // Handle AI paddle movement
-        if (ball.dx > 0 && ball.x > CANVAS_WIDTH / 4) {
+        if (ball.dx > 0) {
           if (
             ball.y > rightPaddle.y + PADDLE_HEIGHT / 2 &&
             rightPaddle.y < CANVAS_HEIGHT - PADDLE_HEIGHT
