@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game</title>
+  </head>
+  <body>
+    <div style="display: grid; justify-content: center">
+      <h1 style="color: #333; text-align: center">Pong</h1>
+
+      <div
+        style="
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-rows: 1fr;
+          align-items: center;
+        "
+      >
+        <p></p>
+        <div
+          style="
+            display: flex;
+            column-gap: 1rem;
+            font-size: large;
+            justify-content: center;
+          "
+        >
+          <p id="player1Score">0</p>
+          <p>:</p>
+          <p id="player2Score">0</p>
+        </div>
+
+        <div style="justify-self: end">
+          Rounds: <span id="roundsCount">0</span>
+        </div>
+      </div>
+
+      <button
+        id="startButton"
+        style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+        "
+      >
+        Press Play to Start
+      </button>
+      <canvas
+        style="border: 1px solid #333; border-radius: 5px"
+        id="canvas"
+        width="1200"
+        height="700"
+      ></canvas>
+    </div>
+    <script>
+      let rounds = 0;
+      const W = 1200;
+      const H = 700;
+
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const player1Score = document.getElementById("player1Score");
+      const player2Score = document.getElementById("player2Score");
+
+      const multiplier = () => (Math.random() > 0.5 ? -1 : 1);
+
+      function randomNumber(min, max) {
+        return multiplier() * (Math.random() * (max - min) + min);
+      }
+
+      const paddleWidth = 20;
+      const paddleHeight = 100;
+      const paddleSpeed = 5;
+
+      const initialState = {
+        ball: {
+          x: W / 2,
+          y: H / 2,
+          radius: 10,
+          dx: multiplier() * 8,
+          dy: randomNumber(1, 2),
+        },
+        leftPaddle: { x: 20, y: H / 2 - paddleHeight / 2 },
+        rightPaddle: { x: W - 40, y: H / 2 - paddleHeight / 2 },
+      };
+      let ball = { ...initialState.ball };
+
+      let leftPaddle = { ...initialState.leftPaddle };
+      let rightPaddle = { ...initialState.rightPaddle };
+
+      const keys = {
+        w: false,
+        s: false,
+        ArrowUp: false,
+        ArrowDown: false,
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key in keys) keys[e.key] = true;
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.key in keys) keys[e.key] = false;
+      });
+
+      draw();
+
+      document.getElementById("startButton").onclick = function () {
+        this.style.display = "none";
+        update();
+      };
+
+      function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.moveTo(W / 2, 0);
+        ctx.lineTo(W / 2, H);
+        ctx.strokeStyle = "#999";
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "gray";
+        ctx.fillRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight);
+
+        ctx.fillStyle = "darkgray";
+        ctx.fillRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight);
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "tomato";
+        ctx.fill();
+        ctx.closePath();
+      }
+
+      function checkCollision(paddle) {
+        return (
+          ball.x - ball.radius <= paddle.x + paddleWidth &&
+          ball.x + ball.radius >= paddle.x &&
+          ball.y >= paddle.y &&
+          ball.y <= paddle.y + paddleHeight
+        );
+      }
+
+      function newRound() {
+        const roundsCount = document.getElementById("roundsCount");
+        const startButton = document.getElementById("startButton");
+
+        leftPaddle = { ...initialState.leftPaddle };
+        rightPaddle = { ...initialState.rightPaddle };
+
+        if (rounds % 5 === 0 && rounds !== 0) {
+          startButton.style.display = "block";
+          startButton.textContent = "click to continue";
+          ball = {
+            ...initialState.ball,
+            dx: 0,
+            dy: 0,
+          };
+        } else {
+          ball = {
+            ...initialState.ball,
+          };
+          rounds += 1;
+          roundsCount.textContent = rounds;
+        }
+      }
+
+      function update() {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if (checkCollision(leftPaddle) || checkCollision(rightPaddle)) {
+          ball.dx *= -1;
+        }
+
+        if (ball.x > W - (paddleWidth + 20) && !checkCollision(rightPaddle)) {
+          player1Score.textContent = Number(player1Score.textContent) + 1;
+          newRound();
+        }
+
+        if (ball.x < paddleWidth + 20 && !checkCollision(leftPaddle)) {
+          player2Score.textContent = Number(player2Score.textContent) + 1;
+          newRound();
+        }
+
+        if (ball.y > H - 5 || ball.y < 5) {
+          ball.dy *= -1;
+        }
+
+        if ((keys.ArrowUp || keys.w) && leftPaddle.y > 0) {
+          leftPaddle.y -= paddleSpeed;
+        }
+
+        if ((keys.ArrowDown || keys.s) && leftPaddle.y < H - paddleHeight) {
+          leftPaddle.y += paddleSpeed;
+        }
+
+        // if in right side of court (half of that)
+        if (ball.dx > 0 && ball.x > W / 4) {
+          console.log("approaching AI");
+          // if the ball is at a higher position than the paddle
+          if (
+            ball.y > rightPaddle.y + paddleHeight / 2 &&
+            rightPaddle.y < H - paddleHeight
+          ) {
+            rightPaddle.y += paddleSpeed;
+          }
+
+          // if the ball is at a lower position than the paddle
+          if (ball.y < rightPaddle.y + paddleHeight / 2 && rightPaddle.y > 0) {
+            rightPaddle.y -= paddleSpeed;
+          }
+        }
+
+        draw();
+        requestAnimationFrame(update);
+      }
+    </script>
+  </body>
+</html>
